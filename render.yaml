@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: zip-share-service
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: BASE_URL
+        sync: false
+      - key: UPLOAD_DIR
+        value: uploads
