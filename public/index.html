@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ZIP Share</title>
+    <style>
+      :root {
+        --bg1: #f7f4ec;
+        --bg2: #d8e2dc;
+        --card: rgba(255, 255, 255, 0.85);
+        --text: #1d2a35;
+        --accent: #2e7d32;
+        --accent-dark: #1b5e20;
+        --border: #b9c8b5;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at 10% 10%, var(--bg2), var(--bg1));
+        display: grid;
+        place-items: center;
+        padding: 1rem;
+      }
+
+      .card {
+        width: min(700px, 100%);
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 1.2rem;
+        box-shadow: 0 20px 40px rgba(43, 66, 44, 0.15);
+        backdrop-filter: blur(6px);
+      }
+
+      h1 {
+        margin: 0 0 0.6rem;
+        font-size: clamp(1.4rem, 4vw, 2rem);
+      }
+
+      p {
+        margin: 0.35rem 0;
+      }
+
+      form {
+        margin-top: 1rem;
+        display: grid;
+        gap: 0.8rem;
+      }
+
+      input[type='file'] {
+        padding: 0.8rem;
+        border-radius: 10px;
+        border: 1px dashed var(--border);
+        background: #f4f8f2;
+      }
+
+      button {
+        border: 0;
+        border-radius: 10px;
+        padding: 0.8rem 1rem;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        background: var(--accent);
+        color: #fff;
+        transition: transform 0.15s ease, background 0.15s ease;
+      }
+
+      button:hover {
+        background: var(--accent-dark);
+        transform: translateY(-1px);
+      }
+
+      .result {
+        margin-top: 1rem;
+        display: none;
+        padding: 0.8rem;
+        border-radius: 10px;
+        background: #eef7ef;
+        border: 1px solid #8aa68a;
+      }
+
+      .result.show {
+        display: block;
+      }
+
+      .error {
+        color: #b71c1c;
+        margin-top: 0.6rem;
+        min-height: 1.2rem;
+      }
+
+      .row {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-top: 0.5rem;
+      }
+
+      .link-box {
+        flex: 1 1 350px;
+        width: 100%;
+        border: 1px solid #a1b7a1;
+        border-radius: 8px;
+        background: white;
+        padding: 0.6rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Upload and Share ZIP</h1>
+      <p>Upload one .zip file and get a shareable link.</p>
+      <p>Uploaded files are deleted automatically after 25 minutes.</p>
+
+      <form id="uploadForm">
+        <input id="fileInput" type="file" accept=".zip" required />
+        <button type="submit">Upload ZIP</button>
+      </form>
+
+      <div id="error" class="error"></div>
+
+      <section id="result" class="result">
+        <p><strong>Upload successful.</strong></p>
+        <p id="expireText"></p>
+        <div class="row">
+          <input id="downloadUrl" class="link-box" readonly />
+          <button id="copyBtn" type="button">Copy Link</button>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const form = document.getElementById('uploadForm');
+      const fileInput = document.getElementById('fileInput');
+      const errorEl = document.getElementById('error');
+      const resultEl = document.getElementById('result');
+      const urlEl = document.getElementById('downloadUrl');
+      const copyBtn = document.getElementById('copyBtn');
+      const expireText = document.getElementById('expireText');
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        errorEl.textContent = '';
+        resultEl.classList.remove('show');
+
+        const file = fileInput.files[0];
+        if (!file) {
+          errorEl.textContent = 'Please select a ZIP file.';
+          return;
+        }
+
+        const payload = new FormData();
+        payload.append('file', file);
+
+        try {
+          const response = await fetch('/upload', {
+            method: 'POST',
+            body: payload,
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || 'Upload failed');
+          }
+
+          urlEl.value = data.downloadUrl;
+          expireText.textContent = `Expires at: ${new Date(data.expiresAt).toLocaleString()}`;
+          resultEl.classList.add('show');
+        } catch (error) {
+          errorEl.textContent = error.message;
+        }
+      });
+
+      copyBtn.addEventListener('click', async () => {
+        if (!urlEl.value) return;
+
+        try {
+          await navigator.clipboard.writeText(urlEl.value);
+          copyBtn.textContent = 'Copied';
+          setTimeout(() => {
+            copyBtn.textContent = 'Copy Link';
+          }, 1200);
+        } catch (_error) {
+          errorEl.textContent = 'Unable to copy. Please copy manually.';
+        }
+      });
+    </script>
+  </body>
+</html>
